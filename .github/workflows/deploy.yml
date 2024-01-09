@@ -51,11 +51,51 @@ jobs:
       #   name: Set up QEMU
       #   uses: docker/setup-qemu-action@v1
 
+name: Deploy to GitHub Packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy_github_packages:
+    name: Deploy to GitHub Packages
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        docker-platform:
+          - linux/amd64
+
+    # Set job-wide environment variables
+    env:
+      REPO: docker.pkg.github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}
+      IMAGE: picard
+    steps:
+
+      # Check out our code
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+
+      # Hit an issue where arm builds would fail with CUrl errors regarding intermediary certificates when downloading from GitHub (i.e., deploy-s6-overlay).
+      # After many hours of troubleshooting, the workaround is to pre-load the image's rootfs with the CA certificates from the runner.
+      # This problem may go away in the future.
+      - 
+        name: Copy CA Certificates from GitHub Runner to Image rootfs
+        run: |
+          ls -la /etc/ssl/certs/
+          mkdir -p ./rootfs/etc/ssl/certs
+          mkdir -p ./rootfs/usr/share/ca-certificates/mozilla
+          cp --no-dereference /etc/ssl/certs/*.crt ./rootfs/etc/ssl/certs
+          cp --no-dereference /etc/ssl/certs/*.pem ./rootfs/etc/ssl/certs
+          cp --no-dereference /usr/share/ca-certificates/mozilla/*.crt ./rootfs/usr/share/ca-certificates/mozilla
+
       # Log into GitHub Packages (so we can push images)
       -
         name: Login to GitHub Packages
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u "${{ github.actor }}" --password-stdin
-
 
       # Set up buildx
       -
@@ -66,13 +106,8 @@ jobs:
       # Build "latest"
       - 
         name: Build & Push - latest
-        run: docker buildx build --no-cache --push --progress plain -t "${{ env.REPO }}/${{ env.IMAGE }}:latest" --compress --platform "${{ matrix.docker-platform }}" .
-
-      # Get version from "latest"
-      -
-        name: Get latest image version
         run: |
-          docker pull "${{ env.REPO }}/${{ env.IMAGE }}:latest"
+          docker buildx build --no-cache --push --progress plain -t "${{ env.REPO }}/${{ env.IMAGE }}:latest" --compress --platform "${{ matrix.docker-platform }}" .
           echo "VERSION_TAG=$(docker run --rm --entrypoint cat "${{ env.REPO }}/${{ env.IMAGE }}:latest" /CONTAINER_VERSION)" >> $GITHUB_ENV
 
       # Show version from "latest"
