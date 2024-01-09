@@ -19,6 +19,7 @@ RUN docker run --rm rsgain_builder rsgain --version | grep -oE '[0-9]+\.[0-9]+' 
 
 # Main Docker image
 FROM debian:bookworm
+LABEL org.opencontainers.image.source="https://github.com/Opt6/docker-picard-rsgain"
 
 # Copy the version file from rsgain_builder image
 COPY --from=rsgain_builder /usr/bin/rsgain_version /usr/bin/rsgain_version
