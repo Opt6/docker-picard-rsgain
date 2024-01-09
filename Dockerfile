@@ -1,3 +1,28 @@
+# Use a base image for the rsgain_builder stage
+FROM debian:bookworm AS rsgain_builder
+
+# Set build arguments
+ARG VERSION=3.4
+ARG ARCH=amd64
+ARG RSGAIN_DOCKERFILE_URL="https://github.com/complexlogic/rsgain/raw/v${VERSION}/Dockerfile"
+
+# Install necessary tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl ca-certificates openssl
+
+# Fetch and build rsgain_builder image
+RUN set -x && \
+    curl -sSL "$RSGAIN_DOCKERFILE_URL" | docker build -t rsgain_builder -
+
+# Run container from rsgain_builder image and get the version
+RUN docker run --rm rsgain_builder rsgain --version | grep -oE '[0-9]+\.[0-9]+' > /usr/bin/rsgain_version
+
+# Main Docker image
+FROM debian:bookworm
+
+# Copy the version file from rsgain_builder image
+COPY --from=rsgain_builder /usr/bin/rsgain_version /usr/bin/rsgain_version
+
 FROM docker.io/golang:1.21.3 AS trivy_builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -12,21 +37,12 @@ FROM docker.io/jlesage/baseimage-gui:ubuntu-22.04-v4
 ENV CHROMIUM_FLAGS="--no-sandbox" \
     URL_PICARD_REPO="https://github.com/metabrainz/picard.git" \
     URL_CHROMAPRINT_REPO="https://github.com/acoustid/chromaprint.git" \
-    URL_GOOGLETEST_REPO="https://github.com/google/googletest.git" \
-    RSGAIN_DOCKERFILE_URL="https://github.com/complexlogic/rsgain/raw/master/Dockerfile"
+    URL_GOOGLETEST_REPO="https://github.com/google/googletest.git"
     
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 COPY rootfs/ /
 COPY --from=trivy_builder /src/trivy/cmd/trivy/trivy /src/trivy
-
-# Fetch rsgain Dockerfile and install rsgain
-RUN set -x && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates openssl && \
-    curl -sSL "$RSGAIN_DOCKERFILE_URL" | docker build -t rsgain_builder - && \
-    docker run --rm rsgain_builder rsgain --version | grep -oE '[0-9]+\.[0-9]+' > /usr/bin/rsgain_version && \
-    docker rmi rsgain_builder
 
 RUN set -x && \
     # Define package arrays
