@@ -15,7 +15,8 @@ RUN set -x && \
     curl -sSL "$RSGAIN_DOCKERFILE_URL" | docker build -t rsgain_builder -
 
 # Run container from rsgain_builder image and get the version
-RUN docker run --rm rsgain_builder rsgain --version | grep -oE '[0-9]+\.[0-9]+' > /usr/bin/rsgain_version
+RUN docker run --rm rsgain_builder ls -la /usr/bin/ && \
+    docker run --rm rsgain_builder rsgain --version | grep -oE '[0-9]+\.[0-9]+' > /usr/bin/rsgain_version
 
 # Main Docker image
 FROM debian:bookworm
@@ -23,6 +24,7 @@ LABEL org.opencontainers.image.source="https://github.com/Opt6/docker-picard-rsg
 
 # Copy the version file from rsgain_builder image
 COPY --from=rsgain_builder /usr/bin/rsgain_version /usr/bin/rsgain_version
+RUN cat /usr/bin/rsgain_version
 
 FROM docker.io/golang:1.21.3 AS trivy_builder
 
