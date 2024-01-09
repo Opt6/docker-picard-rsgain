@@ -1,4 +1,4 @@
-name: Deploy to Docker Hub
+name: Deploy to GitHub Packages
 
 on:
   workflow_dispatch:
@@ -6,15 +6,14 @@ on:
   push:
     branches: 
       - master
-      - main
 
   # Build and deploy the image nightly (to ensure we pick up any security updates)
-  schedule:
-    - cron: "0 0 * * *"
+  #schedule:
+  #  - cron: "0 0 * * *"
 
 jobs:
-  deploy_dockerhub_single_arch:
-    name: Deploy to DockerHub
+  deploy_github_packages:
+    name: Deploy to GitHub Packages
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -25,7 +24,7 @@ jobs:
     #  - REPO: repo name on dockerhub
     #  - IMAGE: image name on dockerhub
     env:
-      REPO: mikenye
+      REPO: docker.pkg.github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}
       IMAGE: picard
     steps:
 
@@ -52,13 +51,11 @@ jobs:
       #   name: Set up QEMU
       #   uses: docker/setup-qemu-action@v1
 
-      # Log into docker hub (so we can push images)
+      # Log into GitHub Packages (so we can push images)
       -
-        name: Login to DockerHub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        name: Login to GitHub Packages
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u "${{ github.actor }}" --password-stdin
+
 
       # Set up buildx
       -
