@@ -2,7 +2,7 @@
 FROM debian:bookworm AS rsgain_builder
 
 # Set build arguments
-ARG VERSION=3.4
+ARG VERSION=3.5.3
 ARG ARCH=amd64
 ARG RSGAIN_DOCKERFILE_URL="https://github.com/complexlogic/rsgain/raw/v${VERSION}/Dockerfile"
 
