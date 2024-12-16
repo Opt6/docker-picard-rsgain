@@ -55,7 +55,10 @@ jobs:
         name: Build & Push - latest
         run: |
           docker buildx build --no-cache --push --progress plain -t "${{ env.REPO }}/${{ env.IMAGE }}:latest" --compress --platform "${{ matrix.docker-platform }}" .
-          echo "VERSION_TAG=$(docker run --rm --entrypoint cat "${{ env.REPO }}/${{ env.IMAGE }}:latest" /CONTAINER_VERSION)" >> $GITHUB_ENV
+          VERSION_TAG=$(docker run --rm --entrypoint cat "${{ env.REPO }}/${{ env.IMAGE }}:latest" /CONTAINER_VERSION)
+          VERSION_TAG_LOWERCASE=$(echo "$VERSION_TAG" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
+          echo "VERSION_TAG=$VERSION_TAG_LOWERCASE" >> $GITHUB_ENV
+
 
       # Show version from "latest"
       -
