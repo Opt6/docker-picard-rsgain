@@ -54,16 +54,26 @@ jobs:
       - 
         name: Build & Push - latest
         run: |
-          docker buildx build --no-cache --push --progress plain -t "${{ env.REPO }}/${{ env.IMAGE }}:latest" --compress --platform "${{ matrix.docker-platform }}" .
-          echo "VERSION_TAG=$(docker run --rm --entrypoint cat "${{ env.REPO }}/${{ env.IMAGE }}:latest" /CONTAINER_VERSION)" >> $GITHUB_ENV
+          # Convert repository and image name to lowercase
+          REPO_LOWERCASE=$(echo "${{ env.REPO }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_LOWERCASE=$(echo "${{ env.IMAGE }}" | tr '[:upper:]' '[:lower:]')
+        
+          # Build the Docker image using lowercase repo/image names
+          docker buildx build --no-cache --push --progress plain -t "${REPO_LOWERCASE}/${IMAGE_LOWERCASE}:latest" --compress --platform "linux/amd64" .
+        
+          # Retrieve the version tag and convert it to lowercase
+          VERSION_TAG=$(docker run --rm --entrypoint cat "${REPO_LOWERCASE}/${IMAGE_LOWERCASE}:latest" /CONTAINER_VERSION)
+          VERSION_TAG_LOWERCASE=$(echo "$VERSION_TAG" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
+          echo "VERSION_TAG=$VERSION_TAG_LOWERCASE" >> $GITHUB_ENV
+
 
       # Show version from "latest"
       -
         name: Show latest image version
         run: |
-          echo "${{ env.REPO }}/${{ env.IMAGE }}:latest contains version: ${{ env.VERSION_TAG }}"
+          echo "${REPO_LOWERCASE}/${IMAGE_LOWERCASE}:latest contains version: ${{ env.VERSION_TAG }}"
 
       # Build version specific
       - 
         name: Build & Push - version specific
-        run: docker buildx build --push --progress plain -t "${{ env.REPO }}/${{ env.IMAGE }}:${{ env.VERSION_TAG }}" --compress --platform "${{ matrix.docker-platform }}" .
+        run: docker buildx build --push --progress plain -t "${REPO_LOWERCASE}/${IMAGE_LOWERCASE}:${{ env.VERSION_TAG }}" --compress --platform "${{ matrix.docker-platform }}" .
