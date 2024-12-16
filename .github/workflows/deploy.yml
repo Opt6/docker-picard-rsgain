@@ -17,20 +17,16 @@ jobs:
 
     # Set job-wide environment variables
     env:
-      REPO: docker.pkg.github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}
+      REPO: docker.pkg.github.com/${{ github.repository_owner | toLowerCase() }}/${{ github.event.repository.name | toLowerCase() }}
       IMAGE: picard
     steps:
 
       # Check out our code
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@v2
 
-      # Hit an issue where arm builds would fail with CUrl errors regarding intermediary certificates when downloading from GitHub (i.e., deploy-s6-overlay).
-      # After many hours of troubleshooting, the workaround is to pre-load the image's rootfs with the CA certificates from the runner.
-      # This problem may go away in the future.
-      - 
-        name: Copy CA Certificates from GitHub Runner to Image rootfs
+      # Copy CA Certificates from GitHub Runner to Image rootfs
+      - name: Copy CA Certificates from GitHub Runner to Image rootfs
         run: |
           ls -la /etc/ssl/certs/
           mkdir -p ./rootfs/etc/ssl/certs
@@ -39,34 +35,28 @@ jobs:
           cp --no-dereference /etc/ssl/certs/*.pem ./rootfs/etc/ssl/certs
           cp --no-dereference /usr/share/ca-certificates/mozilla/*.crt ./rootfs/usr/share/ca-certificates/mozilla
 
-      # Log into GitHub Packages (so we can push images)
-      -
-        name: Login to GitHub Packages
+      # Log into GitHub Packages
+      - name: Login to GitHub Packages
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u "${{ github.actor }}" --password-stdin
 
       # Set up buildx
-      -
-        name: Set up Docker Buildx
+      - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v1
 
       # Build "latest"
-      - 
-        name: Build & Push - latest
+      - name: Build & Push - latest
         run: |
           docker buildx build --no-cache --push --progress plain -t "${{ env.REPO }}/${{ env.IMAGE }}:latest" --compress --platform "${{ matrix.docker-platform }}" .
           VERSION_TAG=$(docker run --rm --entrypoint cat "${{ env.REPO }}/${{ env.IMAGE }}:latest" /CONTAINER_VERSION)
           VERSION_TAG_LOWERCASE=$(echo "$VERSION_TAG" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
           echo "VERSION_TAG=$VERSION_TAG_LOWERCASE" >> $GITHUB_ENV
 
-
       # Show version from "latest"
-      -
-        name: Show latest image version
+      - name: Show latest image version
         run: |
           echo "${{ env.REPO }}/${{ env.IMAGE }}:latest contains version: ${{ env.VERSION_TAG }}"
 
-      # Build version specific
-      - 
-        name: Build & Push - version specific
+      # Build version-specific image
+      - name: Build & Push - version specific
         run: docker buildx build --push --progress plain -t "${{ env.REPO }}/${{ env.IMAGE }}:${{ env.VERSION_TAG }}" --compress --platform "${{ matrix.docker-platform }}" .
