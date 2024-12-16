@@ -28,12 +28,11 @@ RUN cat /usr/bin/rsgain_version
 
 FROM docker.io/golang:1.22.9 AS trivy_builder
 
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
 RUN set -x && \
-    git clone --depth=1 https://github.com/aquasecurity/trivy /src/trivy && \
-    pushd /src/trivy/cmd/trivy && \
-    go build
+    curl -sSfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz -o trivy.tar.gz && \
+    tar zxvf trivy.tar.gz && \
+    mv trivy /usr/local/bin
+
 
 FROM docker.io/jlesage/baseimage-gui:ubuntu-22.04-v4
 
