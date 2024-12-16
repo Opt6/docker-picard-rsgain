@@ -26,7 +26,7 @@ LABEL org.opencontainers.image.source="https://github.com/Opt6/docker-picard-rsg
 COPY --from=rsgain_builder /usr/bin/rsgain_version /usr/bin/rsgain_version
 RUN cat /usr/bin/rsgain_version
 
-FROM docker.io/golang:1.21.3 AS trivy_builder
+FROM docker.io/golang:1.22.5 AS trivy_builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
